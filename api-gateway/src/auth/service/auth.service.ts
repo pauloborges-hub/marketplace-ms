@@ -31,7 +31,7 @@ export class AuthService {
     }
   }
 
-  async validateSessionToken(sessionToken: string): Promise<any> {
+  async validateSessionToken(sessionToken: string): Promise<UserSession> {
     try {
       const { data } = await firstValueFrom(
         this.httpService.get<UserSession>(
