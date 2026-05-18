@@ -4,6 +4,15 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 
 import { AuthService } from '../service/auth.service';
 
+interface JwtPayload {
+  sub: string;
+  email: string;
+  role: string;
+  token: string;
+  iat?: number;
+  exp?: number;
+}
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private readonly authService: AuthService) {
@@ -14,7 +23,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: any) {
+  async validate(payload: JwtPayload) {
     if (!payload) {
       throw new UnauthorizedException('Invalid token payload');
     }

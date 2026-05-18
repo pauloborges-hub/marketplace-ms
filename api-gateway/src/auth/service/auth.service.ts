@@ -2,6 +2,9 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { firstValueFrom } from 'rxjs';
+
+import { LoginDto } from '../dtos/login.dto';
+import { RegisterDto } from '../dtos/register.dto';
 import { serviceConfig } from 'src/config/gateway.config';
 
 export interface UserSession {
@@ -16,6 +19,17 @@ export interface UserSession {
   } | null;
 }
 
+export interface AuthResponse {
+  access_token: string;
+  user: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+  };
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -23,7 +37,7 @@ export class AuthService {
     private readonly httpService: HttpService,
   ) {}
 
-  validateJwtToken(token: string): Promise<any> {
+  validateJwtToken(token: string): Promise<AuthResponse> {
     try {
       return this.jwtService.verify(token);
     } catch {
@@ -46,7 +60,7 @@ export class AuthService {
     }
   }
 
-  async login(loginDto: { email: string; password: string }) {
+  async login(loginDto: LoginDto) {
     try {
       const { data } = await firstValueFrom(
         this.httpService.post(`${serviceConfig.users.url}/login`, loginDto, {
@@ -60,7 +74,7 @@ export class AuthService {
     }
   }
 
-  async register(registerDto: any) {
+  async register(registerDto: RegisterDto) {
     try {
       const { data } = await firstValueFrom(
         this.httpService.post(
