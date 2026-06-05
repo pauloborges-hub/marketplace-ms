@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-@Injectable
+@Injectable()
 export class CacheFallbackService {
   private readonly logger = new Logger(CacheFallbackService.name);
   private readonly cache = new Map<

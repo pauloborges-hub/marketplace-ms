@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { HealthStatus } from 'src/common/health/health-check.interface';
 import { HealthCheckService } from 'src/common/health/health-check.service';
 
-@Injectable
+@Injectable()
 export class HealthService {
   constructor(private readonly healthCheckService: HealthCheckService) {}
 

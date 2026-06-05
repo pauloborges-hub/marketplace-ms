@@ -6,7 +6,7 @@ import { CircuitBreakerService } from '../circuit-breaker/circuit-breaker.servic
 import { HealthStatus, ServiceHealth } from './health-check.interface';
 import { serviceConfig } from 'src/config/gateway.config';
 
-@Injectable
+@Injectable()
 export class HealthCheckService {
   private readonly logger = new Logger(HealthCheckService.name);
   private readonly healthCache = new Map<string, ServiceHealth>();
