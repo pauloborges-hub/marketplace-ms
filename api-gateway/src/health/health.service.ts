@@ -37,7 +37,7 @@ export class HealthService {
     });
 
     if (hasUnhealthyServices) {
-      result.status = HealthStatus.DEGRADED;
+      results.status = HealthStatus.DEGRADED;
     }
 
     return results;

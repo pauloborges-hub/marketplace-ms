@@ -18,6 +18,8 @@ import { HealthCheckModule } from './common/health/health-check.module';
 import { LoggingMiddleware } from './middleware/logging/logging.middleware';
 import { MiddlewareModule } from './middleware/middleware.module';
 import { ProxyModule } from './proxy/proxy.module';
+import { TimeoutModule } from './common/timeout/timeout.module';
+import { RetryModule } from './common/retry/retry.module';
 
 @Module({
   imports: [
@@ -52,6 +54,8 @@ import { ProxyModule } from './proxy/proxy.module';
     HealthCheckModule,
     FallbackModule,
     CircuitBreakerModule,
+    TimeoutModule,
+    RetryModule,
   ],
   controllers: [AppController],
   providers: [

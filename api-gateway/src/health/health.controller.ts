@@ -1,8 +1,8 @@
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Controller, Get, Param } from '@nestjs/common';
 
-import type { HealthCheckService } from 'src/common/health/health-check.service';
-import type { HealthService } from './health.service';
+import { HealthCheckService } from 'src/common/health/health-check.service';
+import { HealthService } from './health.service';
 
 @Controller('health')
 export class HealthController {

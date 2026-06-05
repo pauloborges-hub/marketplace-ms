@@ -11,7 +11,7 @@ export class CacheFallbackService {
     }
   >();
 
-  async getCacheData<T>(
+  async getCachedData<T>(
     key: string,
     timeout: number = 300000,
   ): Promise<T | null> {
