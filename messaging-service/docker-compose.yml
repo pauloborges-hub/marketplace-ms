@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management # Imagem oficial com painel de admin
+    container_name: marketplace-rabbitmq
+    environment:
+      # Credenciais padrão (MUDAR EM PRODUÇÃO!)
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    ports:
+      - "5672:5672" # AMPQ port - porta de comunicação
+      - "15672:15672" # Management UI - painel web de administração
+    volumes:
+      # Persistir dados do RabbitMQ
+      - rabbitmq_data:/var/lib/rabbitmq
+    # Sempre reiniciar se cair
+    restart: unless-stopped
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+# Volume para persistência
+volumes:
+  rabbitmq_data:
