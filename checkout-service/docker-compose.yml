@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  checkout-db:
+    image: postgres:15
+    container_name: checkout-db
+    environment:
+      POSTGRES_DB: checkout_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - checkout_db_data:/var/lib/postgresql/data
+    networks:
+      - checkout-network
+
+volumes:
+  checkout_db_data:
+
+networks:
+  checkout-network:
+    driver: bridge
