@@ -1,0 +1,11 @@
+{
+  "eslint.workingDirectories": [
+    { "directory": "./api-gateway", "changeProcessCWD": true },
+    { "directory": "./checkout-service", "changeProcessCWD": true },
+    { "directory": "./payments-service", "changeProcessCWD": true }
+  ],
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  }
+}
