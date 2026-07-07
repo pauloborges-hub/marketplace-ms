@@ -72,23 +72,25 @@ describe('JwtAuthGuard', () => {
     });
   });
 
-  describe('handleRequest', () => {
+  describe('handleRequest (inherited default passport behavior)', () => {
     const user = { id: 'uuid-1', email: 'foo@bar.com', role: UserRole.BUYER };
 
     it('returns the authenticated user object unchanged when no error occurred and a user was resolved', () => {
-      expect(guard.handleRequest(null, user)).toBe(user);
+      expect(guard.handleRequest(null, user, null, context)).toBe(user);
     });
 
     it('rethrows the original error when passport-jwt reports one (e.g. expired or invalid signature)', () => {
       const error = new UnauthorizedException('jwt expired');
 
-      expect(() => guard.handleRequest(error, false)).toThrow(error);
+      expect(() => {
+        guard.handleRequest(error, false, null, context);
+      }).toThrow(error);
     });
 
     it('throws UnauthorizedException when there is no error but no user was resolved (e.g. missing or malformed token)', () => {
-      expect(() => guard.handleRequest(null, false)).toThrow(
-        UnauthorizedException,
-      );
+      expect(() => {
+        guard.handleRequest(null, false, null, context);
+      }).toThrow(UnauthorizedException);
     });
   });
 });
