@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, UserRole, UserStatus } from './entities/user.entity';
+import { omitPassword } from './utils/omit-password.util';
 
 const USER_NOT_FOUND_MESSAGE = 'Usuário não encontrado.';
 
@@ -18,9 +19,7 @@ export class UsersService {
       throw new NotFoundException(USER_NOT_FOUND_MESSAGE);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password, ...safeUser } = user;
-    return safeUser;
+    return omitPassword(user);
   }
 
   async findActiveSellers(): Promise<Omit<User, 'password'>[]> {
@@ -28,10 +27,6 @@ export class UsersService {
       where: { role: UserRole.SELLER, status: UserStatus.ACTIVE },
     });
 
-    return sellers.map((seller) => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { password, ...safeUser } = seller;
-      return safeUser;
-    });
+    return sellers.map(omitPassword);
   }
 }

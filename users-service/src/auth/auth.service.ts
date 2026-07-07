@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { Repository } from 'typeorm';
 import { User, UserStatus } from '../users/entities/user.entity';
+import { omitPassword } from '../users/utils/omit-password.util';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 
@@ -42,9 +43,7 @@ export class AuthService {
     });
 
     const saved = await this.userRepository.save(user);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password, ...safeUser } = saved;
-    return safeUser;
+    return omitPassword(saved);
   }
 
   async login(
@@ -72,8 +71,6 @@ export class AuthService {
       role: user.role,
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password, ...safeUser } = user;
-    return { user: safeUser, token };
+    return { user: omitPassword(user), token };
   }
 }
