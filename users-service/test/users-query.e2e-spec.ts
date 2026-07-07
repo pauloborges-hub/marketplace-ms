@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -6,6 +7,11 @@ import { App } from 'supertest/types';
 import { Repository } from 'typeorm';
 import { User, UserStatus } from '../src/users/entities/user.entity';
 import { createTestApp } from './utils/create-test-app';
+
+// Emails are suffixed with a run-specific id so each test execution creates
+// its own isolated rows in the shared, never-reset test database — no run
+// ever reads or mutates a row left behind by a previous run.
+const RUN_ID = randomUUID();
 
 describe('Users query endpoints (e2e)', () => {
   let app: INestApplication<App>;
@@ -32,15 +38,6 @@ describe('Users query endpoints (e2e)', () => {
 
     await request(app.getHttpServer()).post('/auth/register').send(dto);
 
-    // The test database persists across runs (no reset/truncate hook), so a
-    // user left INACTIVE by a previous run of the "sellers" test below must
-    // be reactivated here, otherwise this helper's login would fail.
-    const userRepository = app.get<Repository<User>>(getRepositoryToken(User));
-    await userRepository.update(
-      { email: dto.email },
-      { status: UserStatus.ACTIVE },
-    );
-
     const loginResponse = await request(app.getHttpServer())
       .post('/auth/login')
       .send({ email: dto.email, password: dto.password });
@@ -54,7 +51,7 @@ describe('Users query endpoints (e2e)', () => {
   }
 
   describe('GET /users/profile', () => {
-    const email = 'users-query-profile@example.com';
+    const email = `users-query-profile-${RUN_ID}@example.com`;
 
     it('returns the authenticated user, fetched from the database, without the password', async () => {
       const { token, dto } = await registerAndLogin({ email, role: 'buyer' });
@@ -101,11 +98,11 @@ describe('Users query endpoints (e2e)', () => {
   });
 
   describe('GET /users/sellers', () => {
-    const activeSellerEmail = 'users-query-seller-active@example.com';
-    const inactiveSellerEmail = 'users-query-seller-inactive@example.com';
-    const buyerEmail = 'users-query-buyer@example.com';
+    const activeSellerEmail = `users-query-seller-active-${RUN_ID}@example.com`;
+    const inactiveSellerEmail = `users-query-seller-inactive-${RUN_ID}@example.com`;
+    const buyerEmail = `users-query-buyer-${RUN_ID}@example.com`;
 
-    it('returns only sellers with active status, without the password field', async () => {
+    it('returns only sellers with active status, without the password field, regardless of the caller role', async () => {
       const activeSeller = await registerAndLogin({
         email: activeSellerEmail,
         role: 'seller',
@@ -127,27 +124,37 @@ describe('Users query endpoints (e2e)', () => {
         { status: UserStatus.INACTIVE },
       );
 
-      const response = await request(app.getHttpServer())
+      const assertSellersList = (body: unknown) => {
+        const list = body as Array<Record<string, unknown>>;
+        expect(Array.isArray(list)).toBe(true);
+
+        const activeSellerEntry = list.find(
+          (entry) => entry.email === activeSellerEmail,
+        );
+        const inactiveSellerEntry = list.find(
+          (entry) => entry.email === inactiveSellerEmail,
+        );
+        const buyerEntry = list.find((entry) => entry.email === buyerEmail);
+
+        expect(activeSellerEntry).toBeDefined();
+        expect(activeSellerEntry).not.toHaveProperty('password');
+        expect(inactiveSellerEntry).toBeUndefined();
+        expect(buyerEntry).toBeUndefined();
+      };
+
+      const sellerResponse = await request(app.getHttpServer())
         .get('/users/sellers')
         .set('Authorization', `Bearer ${activeSeller.token}`)
         .expect(200);
+      assertSellersList(sellerResponse.body);
 
-      const body = response.body as Array<Record<string, unknown>>;
-      expect(Array.isArray(body)).toBe(true);
-
-      const activeSellerEntry = body.find(
-        (entry) => entry.email === activeSellerEmail,
-      );
-      const inactiveSellerEntry = body.find(
-        (entry) => entry.email === inactiveSellerEmail,
-      );
-      const buyerEntry = body.find((entry) => entry.email === buyerEmail);
-
-      expect(activeSellerEntry).toBeDefined();
-      expect(activeSellerEntry).not.toHaveProperty('password');
-      expect(inactiveSellerEntry).toBeUndefined();
-      expect(buyerEntry).toBeUndefined();
-      expect(buyer.token).toBeDefined();
+      // RF2: the list must be identical no matter who is authenticated —
+      // assert the same result with a buyer's token, not just a seller's.
+      const buyerResponse = await request(app.getHttpServer())
+        .get('/users/sellers')
+        .set('Authorization', `Bearer ${buyer.token}`)
+        .expect(200);
+      assertSellersList(buyerResponse.body);
     });
 
     it('rejects the request with 401 when no Authorization header is sent', async () => {
@@ -158,11 +165,11 @@ describe('Users query endpoints (e2e)', () => {
   describe('GET /users/:id', () => {
     it('returns the user matching the given id, regardless of who is authenticated', async () => {
       const userA = await registerAndLogin({
-        email: 'users-query-id-a@example.com',
+        email: `users-query-id-a-${RUN_ID}@example.com`,
         role: 'buyer',
       });
       const userB = await registerAndLogin({
-        email: 'users-query-id-b@example.com',
+        email: `users-query-id-b-${RUN_ID}@example.com`,
         role: 'buyer',
       });
 
@@ -180,7 +187,7 @@ describe('Users query endpoints (e2e)', () => {
 
     it('returns 404 when the id is a valid UUID but no user exists with it', async () => {
       const { token } = await registerAndLogin({
-        email: 'users-query-id-requester@example.com',
+        email: `users-query-id-requester-${RUN_ID}@example.com`,
         role: 'buyer',
       });
 
@@ -192,7 +199,7 @@ describe('Users query endpoints (e2e)', () => {
 
     it('returns 400 when the id is not a valid UUID', async () => {
       const { token } = await registerAndLogin({
-        email: 'users-query-id-invalid@example.com',
+        email: `users-query-id-invalid-${RUN_ID}@example.com`,
         role: 'buyer',
       });
 
