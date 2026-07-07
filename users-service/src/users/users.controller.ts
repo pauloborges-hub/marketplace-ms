@@ -1,6 +1,6 @@
 import { Controller, Get, Param, ParseUUIDPipe, Req } from '@nestjs/common';
 import { Request } from 'express';
-import { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
+import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
 import { UsersService } from './users.service';
 
 @Controller('users')
