@@ -1,6 +1,6 @@
 export const serviceConfig = {
   users: {
-    url: process.env.USER_SERVICE_URL || 'http://localhost:3000',
+    url: process.env.USERS_SERVICE_URL || 'http://localhost:3000',
     timeout: 10000,
   },
   products: {
