@@ -1,9 +1,15 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
 import { CreateProductDto } from './dto/create-product.dto';
 import { Product } from './entities/product.entity';
+
+const PRODUCT_NOT_FOUND_MESSAGE = 'Produto não encontrado.';
 
 @Injectable()
 export class ProductsService {
@@ -29,5 +35,27 @@ export class ProductsService {
     });
 
     return this.productRepository.save(product);
+  }
+
+  async findActiveProducts(): Promise<Product[]> {
+    return this.productRepository.find({
+      where: { isActive: true },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findActiveBySeller(sellerId: string): Promise<Product[]> {
+    return this.productRepository.find({
+      where: { sellerId, isActive: true },
+    });
+  }
+
+  async findById(id: string): Promise<Product> {
+    const product = await this.productRepository.findOne({ where: { id } });
+    if (!product) {
+      throw new NotFoundException(PRODUCT_NOT_FOUND_MESSAGE);
+    }
+
+    return product;
   }
 }
