@@ -164,15 +164,15 @@ products-service/
 
 Cada critério deve ser verificável de forma objetiva:
 
-- [ ] **CA1** — `npm install` na pasta `products-service` conclui sem erros e instala `@nestjs/typeorm`, `typeorm`, `pg`, `@nestjs/config`, `class-validator` e `class-transformer`.
-- [ ] **CA2** — `docker compose up -d` sobe um container PostgreSQL 15 acessível em `localhost:5436` com o database `products_db` criado.
-- [ ] **CA3** — Com o banco no ar e o `.env` configurado, `npm run start:dev` inicia a aplicação sem erros de conexão e loga a mensagem de inicialização na porta `3001`.
-- [ ] **CA4** — Ao iniciar em ambiente de desenvolvimento (`synchronize: true`), a tabela de produtos é criada automaticamente no banco com todas as colunas descritas na seção 4, incluindo os defaults de `stock` (`0`) e `isActive` (`true`) e os timestamps automáticos.
-- [ ] **CA5** — A coluna `sellerId` existe como UUID simples, sem constraint de foreign key no banco.
-- [ ] **CA6** — A aplicação **não** expõe nenhum endpoint de produtos (apenas as rotas padrão do scaffold, se houver) — confirmando que nenhuma lógica de negócio foi adicionada.
-- [ ] **CA7** — O `ValidationPipe` global está habilitado no bootstrap com `transform`, `whitelist` e `forbidNonWhitelisted`.
-- [ ] **CA8** — Todas as variáveis de ambiente da seção 5 estão documentadas no `.env.example`, e o `.env` real está ignorado pelo Git.
-- [ ] **CA9** — `npm run build` compila o projeto sem erros de TypeScript.
+- [x] **CA1** — `npm install` na pasta `products-service` conclui sem erros e instala `@nestjs/typeorm`, `typeorm`, `pg`, `@nestjs/config`, `class-validator` e `class-transformer`.
+- [x] **CA2** — `docker compose up -d` sobe um container PostgreSQL 15 acessível em `localhost:5436` com o database `products_db` criado.
+- [x] **CA3** — Com o banco no ar e o `.env` configurado, `npm run start:dev` inicia a aplicação sem erros de conexão e loga a mensagem de inicialização na porta `3001`.
+- [x] **CA4** — Ao iniciar em ambiente de desenvolvimento (`synchronize: true`), a tabela de produtos é criada automaticamente no banco com todas as colunas descritas na seção 4, incluindo os defaults de `stock` (`0`) e `isActive` (`true`) e os timestamps automáticos.
+- [x] **CA5** — A coluna `sellerId` existe como UUID simples, sem constraint de foreign key no banco.
+- [x] **CA6** — A aplicação **não** expõe nenhum endpoint de produtos (apenas as rotas padrão do scaffold, se houver) — confirmando que nenhuma lógica de negócio foi adicionada.
+- [x] **CA7** — O `ValidationPipe` global está habilitado no bootstrap com `transform`, `whitelist` e `forbidNonWhitelisted`.
+- [x] **CA8** — Todas as variáveis de ambiente da seção 5 estão documentadas no `.env.example`, e o `.env` real está ignorado pelo Git.
+- [x] **CA9** — `npm run build` compila o projeto sem erros de TypeScript.
 
 ---
 
