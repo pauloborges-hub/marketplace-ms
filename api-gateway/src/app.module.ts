@@ -20,6 +20,7 @@ import { MiddlewareModule } from './middleware/middleware.module';
 import { ProxyModule } from './proxy/proxy.module';
 import { TimeoutModule } from './common/timeout/timeout.module';
 import { RetryModule } from './common/retry/retry.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { RetryModule } from './common/retry/retry.module';
     ProxyModule,
     MiddlewareModule,
     AuthModule,
+    UsersModule,
     HealthModule,
     HealthCheckModule,
     FallbackModule,
