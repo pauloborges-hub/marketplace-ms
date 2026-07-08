@@ -1,20 +1,16 @@
 import { randomUUID } from 'crypto';
 import { INestApplication } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { Repository } from 'typeorm';
 import { Product } from '../src/products/entities/product.entity';
 import { createTestApp } from './utils/create-test-app';
+import { signToken } from './utils/sign-token';
 
 // Each test signs a token for a freshly generated seller/buyer id, so every
 // run creates its own isolated rows in the shared, never-reset test database
 // — no run ever reads or mutates a row left behind by a previous run.
-function signToken(role: 'seller' | 'buyer', sub: string = randomUUID()) {
-  const jwtService = new JwtService({ secret: process.env.JWT_SECRET });
-  return jwtService.sign({ sub, email: `${role}-${sub}@example.com`, role });
-}
 
 const validProductDto = {
   name: 'Wireless Mouse',
