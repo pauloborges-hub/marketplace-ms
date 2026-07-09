@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import { isClientError } from 'src/common/errors/client-error.util';
 import { RetryOptions, RetryResult } from './retry.interface';
 
 @Injectable()
@@ -43,6 +44,19 @@ export class RetryService {
       } catch (error) {
         lastError = error as Error;
         this.logger.warn(`Attempt ${attempt + 1} failed: ${lastError.message}`);
+
+        if (isClientError(lastError)) {
+          this.logger.debug(
+            `Client error (${lastError.getStatus()}), skipping retry`,
+          );
+
+          return {
+            success: false,
+            error: lastError,
+            attempts: attempt + 1,
+            totalTime: Date.now() - startTime,
+          };
+        }
 
         if (attempt < config.maxRetries) {
           const delay = this.calculateDelay(attempt, config);
