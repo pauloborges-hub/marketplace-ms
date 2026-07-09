@@ -1,4 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
+
+import { isClientError } from 'src/common/errors/client-error.util';
 import {
   CircuitBreakerOptions,
   CircuitBreakerState,
@@ -47,6 +49,14 @@ export class CircuitBreakerService {
 
       return result;
     } catch (error) {
+      if (isClientError(error)) {
+        this.logger.debug(
+          `Client error (${error.getStatus()}) for ${key}, not counted as circuit failure`,
+        );
+
+        throw error;
+      }
+
       this.onFailure(circuit, key, options);
       this.logger.error(`Circuit breaker failure for ${key}:`, error.message);
 
