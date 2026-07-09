@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Test } from '@nestjs/testing';
 import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
@@ -11,6 +11,8 @@ describe('ProductsService', () => {
   let repository: {
     create: jest.Mock<Partial<Product>, [Partial<Product>]>;
     save: jest.Mock<Promise<Product>, [Partial<Product>]>;
+    find: jest.Mock<Promise<Product[]>, [unknown]>;
+    findOne: jest.Mock<Promise<Product | null>, [unknown]>;
   };
 
   const validDto: CreateProductDto = {
@@ -43,6 +45,8 @@ describe('ProductsService', () => {
           ...entity,
         } as Product),
       ),
+      find: jest.fn(() => Promise.resolve([])),
+      findOne: jest.fn(() => Promise.resolve(null)),
     };
 
     const module = await Test.createTestingModule({
@@ -87,5 +91,72 @@ describe('ProductsService', () => {
 
     expect(result.sellerId).toBe('seller-uuid');
     expect(result.isActive).toBe(true);
+  });
+
+  describe('findActiveProducts', () => {
+    it('queries only active products ordered by createdAt descending', async () => {
+      const products = [{ id: 'a' } as Product, { id: 'b' } as Product];
+      repository.find.mockResolvedValueOnce(products);
+
+      const result = await service.findActiveProducts();
+
+      expect(repository.find).toHaveBeenCalledWith({
+        where: { isActive: true },
+        order: { createdAt: 'DESC' },
+      });
+      expect(result).toBe(products);
+    });
+
+    it('returns an empty array when there are no active products', async () => {
+      repository.find.mockResolvedValueOnce([]);
+
+      const result = await service.findActiveProducts();
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('findActiveBySeller', () => {
+    it('queries active products scoped to the given sellerId', async () => {
+      const products = [{ id: 'a', sellerId: 'seller-uuid' } as Product];
+      repository.find.mockResolvedValueOnce(products);
+
+      const result = await service.findActiveBySeller('seller-uuid');
+
+      expect(repository.find).toHaveBeenCalledWith({
+        where: { sellerId: 'seller-uuid', isActive: true },
+      });
+      expect(result).toBe(products);
+    });
+
+    it('returns an empty array without throwing when the seller has no active products', async () => {
+      repository.find.mockResolvedValueOnce([]);
+
+      const result = await service.findActiveBySeller('unknown-seller-uuid');
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('findById', () => {
+    it('queries by id without filtering by isActive', async () => {
+      const product = { id: 'product-uuid', isActive: false } as Product;
+      repository.findOne.mockResolvedValueOnce(product);
+
+      const result = await service.findById('product-uuid');
+
+      expect(repository.findOne).toHaveBeenCalledWith({
+        where: { id: 'product-uuid' },
+      });
+      expect(result).toBe(product);
+    });
+
+    it('throws NotFoundException when no product matches the id', async () => {
+      repository.findOne.mockResolvedValueOnce(null);
+
+      await expect(service.findById('missing-uuid')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
   });
 });
