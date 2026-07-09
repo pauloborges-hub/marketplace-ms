@@ -1,10 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { firstValueFrom } from 'rxjs';
 
-import { LoginDto } from '../dtos/login.dto';
-import { RegisterDto } from '../dtos/register.dto';
 import { serviceConfig } from 'src/config/gateway.config';
 
 export interface UserSession {
@@ -19,31 +16,9 @@ export interface UserSession {
   } | null;
 }
 
-export interface AuthResponse {
-  access_token: string;
-  user: {
-    id: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-    role: string;
-  };
-}
-
 @Injectable()
 export class AuthService {
-  constructor(
-    private readonly jwtService: JwtService,
-    private readonly httpService: HttpService,
-  ) {}
-
-  validateJwtToken(token: string): Promise<AuthResponse> {
-    try {
-      return this.jwtService.verify(token);
-    } catch {
-      throw new UnauthorizedException('Invalid JWT token');
-    }
-  }
+  constructor(private readonly httpService: HttpService) {}
 
   async validateSessionToken(sessionToken: string): Promise<UserSession> {
     try {
@@ -57,38 +32,6 @@ export class AuthService {
       return data;
     } catch {
       throw new UnauthorizedException('Invalid session token');
-    }
-  }
-
-  async login(loginDto: LoginDto) {
-    try {
-      const { data } = await firstValueFrom(
-        this.httpService.post(
-          `${serviceConfig.users.url}/auth/login`,
-          loginDto,
-          { timeout: serviceConfig.users.timeout },
-        ),
-      );
-
-      return data;
-    } catch {
-      throw new UnauthorizedException('Invalid login credentials');
-    }
-  }
-
-  async register(registerDto: RegisterDto) {
-    try {
-      const { data } = await firstValueFrom(
-        this.httpService.post(
-          `${serviceConfig.users.url}/auth/register`,
-          registerDto,
-          { timeout: serviceConfig.users.timeout },
-        ),
-      );
-
-      return data;
-    } catch {
-      throw new UnauthorizedException('Registration failed');
     }
   }
 }
