@@ -1,12 +1,48 @@
-import { Controller, Get, Headers, Param } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../guards/auth.guard';
 import { ProxyService } from '../proxy/service/proxy.service';
+import { CreateProductDto } from './dto/create-product.dto';
+
+interface AuthenticatedUser {
+  userId: string;
+  email: string;
+  role: string;
+}
 
 @ApiTags('Products')
 @Controller('products')
 export class ProductsController {
   constructor(private readonly proxyService: ProxyService) {}
+
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Criação de produto (somente seller)' })
+  createProduct(
+    @Body() dto: CreateProductDto,
+    @Headers('authorization') authorization: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<unknown> {
+    return this.proxyService.proxyRequest(
+      'products',
+      'POST',
+      '/products',
+      dto,
+      { authorization },
+      user,
+    ) as Promise<unknown>;
+  }
 
   @Get()
   @ApiOperation({ summary: 'Catálogo de produtos ativos' })
