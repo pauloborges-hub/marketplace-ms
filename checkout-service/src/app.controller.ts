@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
 
 import { AppService } from './app.service';
+import { Public } from './auth/decorators/public.decorator';
 import { PaymentOrderMessage } from './events/payment-queue.interface';
 import { PaymentQueueService } from './events/payment-queue/payment-queue.service';
 
@@ -14,6 +15,12 @@ export class AppController {
   @Get()
   getHello(): string {
     return this.appService.getHello();
+  }
+
+  @Public()
+  @Get('health')
+  getHealth(): { status: string; service: string } {
+    return this.appService.getHealth();
   }
 
   @Post('test/send-message')
