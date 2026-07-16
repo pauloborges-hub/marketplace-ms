@@ -144,7 +144,7 @@ export class RabbitmqService implements OnModuleInit, OnModuleDestroy {
     options: {
       maxRetries?: number;
       retryDelayMs?: number;
-    },
+    } = {},
   ): Promise<void> {
     const maxRetries = options.maxRetries ?? 3;
     const retryDelayMs = options.retryDelayMs ?? 30000;
