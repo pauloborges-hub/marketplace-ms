@@ -56,8 +56,19 @@ export class CartService {
   }
 
   async getCart(userId: string): Promise<Cart> {
-    const cart = await this.findActiveCart(userId);
+    const cart = await this.getActiveCart(userId);
     return cart ?? this.buildEmptyCart(userId);
+  }
+
+  getActiveCart(userId: string): Promise<Cart | null> {
+    return this.cartRepository.findOne({
+      where: { userId, status: CartStatus.ACTIVE },
+    });
+  }
+
+  markAsCompleted(cart: Cart): Promise<Cart> {
+    cart.status = CartStatus.COMPLETED;
+    return this.cartRepository.save(cart);
   }
 
   async removeItem(userId: string, itemId: string): Promise<Cart> {
@@ -108,14 +119,8 @@ export class CartService {
   }
 
   private async getOrCreateActiveCart(userId: string): Promise<Cart> {
-    const existing = await this.findActiveCart(userId);
+    const existing = await this.getActiveCart(userId);
     return existing ?? this.buildEmptyCart(userId);
-  }
-
-  private findActiveCart(userId: string): Promise<Cart | null> {
-    return this.cartRepository.findOne({
-      where: { userId, status: CartStatus.ACTIVE },
-    });
   }
 
   private buildEmptyCart(userId: string): Cart {
