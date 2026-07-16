@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 
 import { PaymentOrderMessage } from '../payment-queue.interface';
 import { PaymentQueueService } from '../payment-queue/payment-queue.service';
+import { PaymentsService } from '../../payments/payments.service';
 import { RabbitmqService } from '../rabbitmq/rabbitmq.service';
 
 export interface ConsumerMetrics {
@@ -45,6 +46,7 @@ export class PaymentConsumerService implements OnModuleInit {
   constructor(
     private readonly paymentQueueService: PaymentQueueService,
     private readonly rabbitMQService: RabbitmqService,
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   async onModuleInit() {
@@ -78,7 +80,9 @@ export class PaymentConsumerService implements OnModuleInit {
     }
   }
 
-  private processPaymentOrder(message: PaymentOrderMessage): void {
+  private async processPaymentOrder(
+    message: PaymentOrderMessage,
+  ): Promise<void> {
     const startTime = Date.now();
     try {
       this.logger.log(
@@ -94,8 +98,9 @@ export class PaymentConsumerService implements OnModuleInit {
         return;
       }
 
-      // TODO: Processar pagamento usando PaymentsService
-      this.logger.log('✅ Payment order received and validated');
+      await this.paymentsService.processPayment(message);
+
+      this.logger.log('✅ Payment order processed');
       this.updateMetrics(true, startTime);
     } catch (error) {
       this.logger.error(
