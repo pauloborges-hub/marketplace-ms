@@ -17,6 +17,7 @@ import { HealthModule } from './health/health.module';
 import { HealthCheckModule } from './common/health/health-check.module';
 import { LoggingMiddleware } from './middleware/logging/logging.middleware';
 import { MiddlewareModule } from './middleware/middleware.module';
+import { PaymentsModule } from './payments/payments.module';
 import { ProductsModule } from './products/products.module';
 import { ProxyModule } from './proxy/proxy.module';
 import { TimeoutModule } from './common/timeout/timeout.module';
@@ -54,6 +55,7 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     UsersModule,
     ProductsModule,
+    PaymentsModule,
     HealthModule,
     HealthCheckModule,
     FallbackModule,
