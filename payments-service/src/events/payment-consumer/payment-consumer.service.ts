@@ -98,7 +98,20 @@ export class PaymentConsumerService implements OnModuleInit {
         return;
       }
 
-      await this.paymentsService.processPayment(message);
+      const payment = await this.paymentsService.processPayment(message);
+
+      // Publica o resultado de volta para que o checkout-service atualize
+      // o status do pedido (aprovado -> paid, rejeitado -> failed).
+      await this.paymentQueueService.publishPaymentResult({
+        orderId: payment.orderId,
+        userId: payment.userId,
+        status: payment.status as 'approved' | 'rejected',
+        amount: payment.amount,
+        paymentMethod: payment.paymentMethod,
+        transactionId: payment.transactionId,
+        rejectionReason: payment.rejectionReason,
+        processedAt: (payment.processedAt ?? new Date()).toISOString(),
+      });
 
       this.logger.log('✅ Payment order processed');
       this.updateMetrics(true, startTime);

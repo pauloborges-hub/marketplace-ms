@@ -27,20 +27,21 @@ export class PaymentsService {
    * exceção — apenas falhas técnicas (ex.: persistência) propagam, para que
    * o consumer faça NACK e acione o retry/DLQ (RN6).
    */
-  async processPayment(message: PaymentOrderMessage): Promise<void> {
+  async processPayment(message: PaymentOrderMessage): Promise<Payment> {
     const existing: Payment | null = await this.paymentRepository.findOne({
       where: { orderId: message.orderId },
     });
 
     // RN5 — já processado (status final): trata como concluído, sem chamar
-    // o gateway novamente nem criar um novo registro.
+    // o gateway novamente nem criar um novo registro. Retorna o registro
+    // existente para que o resultado possa ser re-publicado (idempotente).
     if (existing && existing.status !== PaymentStatus.PENDING) {
       this.logger.log(
         `⏭️  Payment for order ${message.orderId} already processed ` +
           `(status=${existing.status}), skipping`,
       );
 
-      return;
+      return existing;
     }
 
     // RN5 — retoma um Payment pending existente ou cria um novo.
@@ -74,6 +75,8 @@ export class PaymentsService {
       `💳 Payment for order ${message.orderId} processed: ` +
         `status=${payment.status}, transactionId=${payment.transactionId}`,
     );
+
+    return payment;
   }
 
   async findByOrderId(orderId: string): Promise<Payment> {
