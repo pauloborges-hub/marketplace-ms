@@ -1,0 +1,33 @@
+# Configuração global de scrape do Prometheus
+global:
+  scrape_interval: 15s # Frequência padrão de coleta de métricas
+  evaluation_interval: 15s # Frequência de avaliação de regras
+
+# Os 5 serviços NestJS rodam no HOST (fora de container), então o Prometheus
+# os alcança via host.docker.internal. O endpoint padrão é /metrics.
+# Enquanto os serviços não expõem /metrics (próxima spec), os targets ficam DOWN.
+scrape_configs:
+  # O próprio Prometheus (útil para validar que está saudável)
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: "api-gateway"
+    static_configs:
+      - targets: ["host.docker.internal:3005"]
+
+  - job_name: "users-service"
+    static_configs:
+      - targets: ["host.docker.internal:3000"]
+
+  - job_name: "products-service"
+    static_configs:
+      - targets: ["host.docker.internal:3001"]
+
+  - job_name: "checkout-service"
+    static_configs:
+      - targets: ["host.docker.internal:3003"]
+
+  - job_name: "payments-service"
+    static_configs:
+      - targets: ["host.docker.internal:3004"]
