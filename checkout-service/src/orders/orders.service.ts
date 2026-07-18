@@ -9,13 +9,21 @@ import { CartService } from '../cart/cart.service';
 import { PaymentQueueService } from '../events/payment-queue/payment-queue.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { Order, OrderStatus } from './entities/order.entity';
+import { Logger } from '@nestjs/common';
 
 const ACTIVE_CART_REQUIRED_MESSAGE =
   'Não há carrinho ativo com itens para finalizar.';
 const ORDER_NOT_FOUND_MESSAGE = 'Pedido não encontrado.';
 
+const PAYMENT_STATUS_TO_ORDER_STATUS: Record<string, OrderStatus> = {
+  approved: OrderStatus.PAID,
+  rejected: OrderStatus.FAILED,
+};
+
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
@@ -71,5 +79,47 @@ export class OrdersService {
       throw new NotFoundException(ORDER_NOT_FOUND_MESSAGE);
     }
     return order;
+  }
+
+  /**
+   * Aplica o resultado do pagamento (recebido da fila) ao pedido.
+   *
+   * Idempotente: só atualiza pedidos ainda `pending`, então mensagens
+   * duplicadas (entrega at-least-once) não sobrescrevem um status final.
+   */
+  async applyPaymentResult(
+    orderId: string,
+    paymentStatus: string,
+  ): Promise<void> {
+    const targetStatus = PAYMENT_STATUS_TO_ORDER_STATUS[paymentStatus];
+    if (!targetStatus) {
+      this.logger.warn(
+        `Ignoring payment result for order ${orderId}: unknown status "${paymentStatus}"`,
+      );
+      return;
+    }
+
+    const order = await this.orderRepository.findOne({ where: { id: orderId } });
+    if (!order) {
+      this.logger.warn(
+        `Payment result received for unknown order ${orderId}, ignoring`,
+      );
+      return;
+    }
+
+    if (order.status !== OrderStatus.PENDING) {
+      this.logger.log(
+        `Order ${orderId} already settled (status=${order.status}), ` +
+          `ignoring payment result "${paymentStatus}"`,
+      );
+      return;
+    }
+
+    order.status = targetStatus;
+    await this.orderRepository.save(order);
+
+    this.logger.log(
+      `✅ Order ${orderId} updated to "${targetStatus}" from payment result`,
+    );
   }
 }
