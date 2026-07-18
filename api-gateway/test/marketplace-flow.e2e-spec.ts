@@ -55,6 +55,39 @@ async function pollPaymentStatus(
   );
 }
 
+/**
+ * A ordem é atualizada de forma assíncrona: o payments-service publica o
+ * resultado do pagamento e o checkout-service consome esse evento para mudar
+ * o status do pedido (approved -> paid, rejected -> failed). Poll GET
+ * /orders/:orderId (direto no checkout-service) até sair de `pending`.
+ */
+async function pollOrderStatus(
+  token: string,
+  orderId: string,
+  { timeoutMs = 20000, intervalMs = 500 } = {},
+): Promise<{ status: string; total: number; id: string }> {
+  const deadline = Date.now() + timeoutMs;
+  let last: { status?: string } = {};
+
+  while (Date.now() < deadline) {
+    const res = await checkout()
+      .get(`/orders/${orderId}`)
+      .set(bearer(token));
+
+    if (res.status === 200) {
+      last = res.body;
+      if (res.body.status && res.body.status !== 'pending') {
+        return res.body;
+      }
+    }
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+
+  throw new Error(
+    `Order ${orderId} was not settled within ${timeoutMs}ms (last status: ${last.status ?? 'unknown'})`,
+  );
+}
+
 async function registerAndLogin(
   role: 'seller' | 'buyer',
 ): Promise<{ token: string; email: string }> {
@@ -68,7 +101,7 @@ async function registerAndLogin(
       password,
       firstName: role === 'seller' ? 'Seller' : 'Buyer',
       lastName: 'E2E',
-      role: role === 'seller' ? 'seller' : 'user',
+      role,
     })
     .expect((res) => {
       if (![200, 201].includes(res.status)) {
@@ -179,6 +212,10 @@ describe('Marketplace full flow (e2e, real services)', () => {
     // Payment lookup THROUGH the gateway, authenticated as the buyer.
     const payment = await pollPaymentStatus(buyerToken, orderId);
     expect(payment.status).toBe('approved');
+
+    // The checkout-service consumes the payment result and settles the order.
+    const settledOrder = await pollOrderStatus(buyerToken, orderId);
+    expect(settledOrder.status).toBe('paid');
   }, 40000);
 
   it('Flow 2 (.99 price): cart -> checkout -> REJECTED payment', async () => {
@@ -208,5 +245,9 @@ describe('Marketplace full flow (e2e, real services)', () => {
 
     const payment = await pollPaymentStatus(buyerToken, orderId);
     expect(payment.status).toBe('rejected');
+
+    // A rejected payment settles the order as `failed`.
+    const settledOrder = await pollOrderStatus(buyerToken, orderId);
+    expect(settledOrder.status).toBe('failed');
   }, 40000);
 });
