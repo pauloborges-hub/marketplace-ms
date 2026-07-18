@@ -1,0 +1,11 @@
+apiVersion: 1
+
+# Datasource provisionado automaticamente: o Grafana já sobe com o Prometheus
+# configurado e como padrão, sem nenhuma configuração manual pela UI.
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    # O Grafana alcança o Prometheus pelo nome do serviço na rede do Compose
+    url: http://prometheus:9090
+    isDefault: true
