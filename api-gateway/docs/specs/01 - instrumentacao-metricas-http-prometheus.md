@@ -61,8 +61,23 @@ na nova rota, e isentá-la do throttling.
   módulo (`prom-client`'s `register`). Isso evita o erro `"A metric with the name ... has already
   been registered"` caso o módulo Nest seja instanciado mais de uma vez no mesmo processo (ex.:
   múltiplos testes e2e no mesmo arquivo de teste rodando em série).
-- **Interceptor global:** registrado via token `APP_INTERCEPTOR` do NestJS, dentro do próprio
-  `MetricsModule` — não precisa ser registrado manualmente no `AppModule`.
+- **Middleware global:** a captura das métricas é feita por um `NestMiddleware` aplicado a `'*'`
+  no `configure()` do próprio `MetricsModule` — não precisa ser registrado no `AppModule`.
+
+  > **Nota de implementação (emenda à versão original desta spec).** A versão original pedia um
+  > `HttpMetricsInterceptor` registrado via `APP_INTERCEPTOR`. Isso foi descartado porque **não
+  > consegue cumprir CA10, CA11 nem a cláusula de 429 do RF3**:
+  >
+  > - Em `@nestjs/core/router/router-execution-context.js` (v11), os guards são aguardados
+  >   **antes** de `interceptorsConsumer.intercept(...)`. Um 401 do `JwtAuthGuard` ou um 429 do
+  >   `CustomThrottlerGuard` curto-circuita antes de `intercept()` ser chamado.
+  > - 404 de rota inexistente é servido por `setNotFoundHandler`, que no `ExpressAdapter` é um
+  >   layer `use()` do Express — sem `RouterExecutionContext`, portanto sem cadeia de interceptors.
+  >
+  > Um middleware com `res.on('finish')` roda antes de tudo e é notificado em todos esses casos.
+  > O `req.route` é atribuído pelo router do Express no match do layer (antes dos guards) e guarda
+  > o **padrão** registrado, então o label `route` continua correto — e permanece `undefined` em
+  > rota inexistente, virando `unmatched`.
 - **Rota pública por padrão:** a rota `GET /metrics` não deve ter `@UseGuards(JwtAuthGuard)` —
   isso já é suficiente para deixá-la acessível sem token, dado o padrão do gateway (ver seção 1).
   Não é necessário (nem incorreto) decorar com `@Public()`, já que esse decorator não tem efeito
