@@ -8,6 +8,7 @@ import { databaseConfig } from './config/database.config';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { MetricsModule } from './metrics/metrics.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
     TypeOrmModule.forRoot(databaseConfig),
     UsersModule,
     AuthModule,
+    MetricsModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],
