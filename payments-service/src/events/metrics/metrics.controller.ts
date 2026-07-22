@@ -5,9 +5,9 @@ import {
   PaymentConsumerService,
 } from '../payment-consumer/payment-consumer.service';
 
-@Controller('metrics')
-export class MetricsController {
-  private readonly logger = new Logger(MetricsController.name);
+@Controller('consumer-metrics')
+export class ConsumerMetricsController {
+  private readonly logger = new Logger(ConsumerMetricsController.name);
 
   constructor(
     private readonly paymentConsumerService: PaymentConsumerService,
