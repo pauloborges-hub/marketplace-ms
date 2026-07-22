@@ -11,10 +11,12 @@ import { CartModule } from './cart/cart.module';
 import { OrdersModule } from './orders/orders.module';
 import { databaseConfig } from './config/database.config';
 import { EventsModule } from './events/events.module';
+import { MetricsModule } from './metrics/metrics.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    MetricsModule,
     TypeOrmModule.forRoot(databaseConfig),
     AuthModule,
     CartModule,
