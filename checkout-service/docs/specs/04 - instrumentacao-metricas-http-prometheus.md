@@ -180,6 +180,23 @@ src/metrics/
 - [ ] **CA12** — O consumo de eventos via RabbitMQ (`PaymentResultConsumer`) continua funcionando
   exatamente como antes; nenhuma métrica relacionada a mensageria foi adicionada por esta spec.
 
+> **Nota de implementação — limitação conhecida de CA9 e CA10 com a abordagem de interceptor.**
+> A implementação segue o `HttpMetricsInterceptor` via `APP_INTERCEPTOR` descrito nesta spec, e
+> **CA9 (404) e CA10 (401) não são atendidos** por essa escolha:
+>
+> - Em `@nestjs/core/router/router-execution-context.js` (v11), os guards são aguardados **antes**
+>   de `interceptorsConsumer.intercept(...)`. Como o `checkout-service` tem `JwtAuthGuard` global
+>   via `APP_GUARD` (`src/app.module.ts`), toda resposta **401** curto-circuita antes de o
+>   interceptor rodar.
+> - **404** de rota inexistente é servido por `setNotFoundHandler`, um layer `use()` do Express,
+>   sem `RouterExecutionContext` — portanto sem cadeia de interceptors.
+>
+> Os testes e2e correspondentes ficam marcados como `it.failing` (`test/metrics.e2e-spec.ts`) para
+> deixar a lacuna explícita. O `api-gateway` cobriu 401/404 migrando de interceptor para um
+> `NestMiddleware` com `res.on('finish')` (ver emenda em
+> `api-gateway/docs/specs/01 - instrumentacao-metricas-http-prometheus.md`) — caminho disponível
+> caso se decida atender CA9/CA10 aqui numa spec futura.
+
 ---
 
 ## 7. Dependências e sequência
