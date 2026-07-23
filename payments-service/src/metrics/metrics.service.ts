@@ -6,6 +6,8 @@ import {
   collectDefaultMetrics,
 } from 'prom-client';
 
+import { PaymentStatus } from '../payments/entities/payment.entity';
+
 type HttpLabels = 'method' | 'route' | 'status_code';
 
 @Injectable()
@@ -16,6 +18,9 @@ export class MetricsService implements OnModuleDestroy {
   private readonly registry = new Registry();
   private readonly requestsTotal: Counter<HttpLabels>;
   private readonly requestDuration: Histogram<HttpLabels>;
+  private readonly paymentsProcessedTotal: Counter<string>;
+  private readonly paymentsApprovedTotal: Counter<string>;
+  private readonly paymentsRejectedTotal: Counter<'reason'>;
 
   constructor() {
     collectDefaultMetrics({ register: this.registry });
@@ -35,6 +40,25 @@ export class MetricsService implements OnModuleDestroy {
       // serviço com acesso direto ao Postgres (sem cauda de proxy/timeout).
       registers: [this.registry],
     });
+
+    this.paymentsProcessedTotal = new Counter({
+      name: 'payments_processed_total',
+      help: 'Total de pagamentos efetivamente processados (aprovados ou rejeitados)',
+      registers: [this.registry],
+    });
+
+    this.paymentsApprovedTotal = new Counter({
+      name: 'payments_approved_total',
+      help: 'Total de pagamentos aprovados pelo gateway',
+      registers: [this.registry],
+    });
+
+    this.paymentsRejectedTotal = new Counter({
+      name: 'payments_rejected_total',
+      help: 'Total de pagamentos rejeitados pelo gateway, por motivo',
+      labelNames: ['reason'],
+      registers: [this.registry],
+    });
   }
 
   recordHttpRequest(
@@ -47,6 +71,16 @@ export class MetricsService implements OnModuleDestroy {
 
     this.requestsTotal.inc(labels);
     this.requestDuration.observe(labels, durationSeconds);
+  }
+
+  recordPaymentProcessed(status: PaymentStatus, rejectionReason?: string | null) {
+    this.paymentsProcessedTotal.inc();
+
+    if (status === PaymentStatus.APPROVED) {
+      this.paymentsApprovedTotal.inc();
+    } else if (status === PaymentStatus.REJECTED) {
+      this.paymentsRejectedTotal.inc({ reason: rejectionReason ?? 'unknown' });
+    }
   }
 
   getMetrics(): Promise<string> {

@@ -7,13 +7,18 @@ import {
 import * as amqp from 'amqplib';
 import { ConfigService } from '@nestjs/config';
 
+import { MetricsService } from '../../metrics/metrics.service';
+
 @Injectable()
 export class RabbitmqService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RabbitmqService.name);
   private connection: amqp.ChannelModel;
   private channel: amqp.Channel;
 
-  constructor(private configService: ConfigService) {}
+  constructor(
+    private configService: ConfigService,
+    private readonly metrics: MetricsService,
+  ) {}
 
   async onModuleInit() {
     await this.connect();
@@ -133,6 +138,11 @@ export class RabbitmqService implements OnModuleInit, OnModuleDestroy {
       if (!published) {
         throw new Error('Failed to publish messsage to RabbitMQ');
       }
+
+      // Métrica de negócio: só conta após a publicação ser confirmada. O
+      // early-return de canal indisponível e o catch abaixo não passam por
+      // aqui, então publicações "silenciosas" não são contabilizadas (CA-7).
+      this.metrics.recordMessagePublished(routingKey);
     } catch (error) {
       this.logger.error('❌ Error publishing message to RabbitMQ:', error);
     }
