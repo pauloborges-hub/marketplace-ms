@@ -4,6 +4,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { PaymentOrderMessage } from '../events/payment-queue.interface';
+import { MetricsService } from '../metrics/metrics.service';
 import {
   FakePaymentGatewayService,
   GatewayResult,
@@ -15,6 +16,7 @@ describe('PaymentsService', () => {
   let service: PaymentsService;
   let repository: jest.Mocked<Pick<Repository<Payment>, 'findOne' | 'create' | 'save'>>;
   let gateway: { process: jest.Mock<Promise<GatewayResult>, [number]> };
+  let metrics: { recordPaymentProcessed: jest.Mock };
 
   const buildMessage = (
     overrides: Partial<PaymentOrderMessage> = {},
@@ -54,12 +56,17 @@ describe('PaymentsService', () => {
           provide: FakePaymentGatewayService,
           useValue: { process: jest.fn() },
         },
+        {
+          provide: MetricsService,
+          useValue: { recordPaymentProcessed: jest.fn() },
+        },
       ],
     }).compile();
 
     service = module.get<PaymentsService>(PaymentsService);
     repository = module.get(getRepositoryToken(Payment));
     gateway = module.get(FakePaymentGatewayService);
+    metrics = module.get(MetricsService);
   });
 
   describe('processPayment', () => {
@@ -163,6 +170,50 @@ describe('PaymentsService', () => {
         'DB down',
       );
       expect(gateway.process).not.toHaveBeenCalled();
+    });
+
+    it('CA-2 — pagamento aprovado registra a métrica de negócio como APPROVED', async () => {
+      repository.findOne.mockResolvedValue(null);
+      gateway.process.mockResolvedValue({
+        approved: true,
+        transactionId: 'txn_approved',
+      });
+
+      await service.processPayment(buildMessage());
+
+      expect(metrics.recordPaymentProcessed).toHaveBeenCalledTimes(1);
+      expect(metrics.recordPaymentProcessed).toHaveBeenCalledWith(
+        PaymentStatus.APPROVED,
+        null,
+      );
+    });
+
+    it('CA-3 — pagamento rejeitado registra a métrica de negócio com o reason do gateway', async () => {
+      repository.findOne.mockResolvedValue(null);
+      gateway.process.mockResolvedValue({
+        approved: false,
+        transactionId: 'txn_rejected',
+        rejectionReason: 'Limite excedido',
+      });
+
+      await service.processPayment(buildMessage({ amount: 20000 }));
+
+      expect(metrics.recordPaymentProcessed).toHaveBeenCalledTimes(1);
+      expect(metrics.recordPaymentProcessed).toHaveBeenCalledWith(
+        PaymentStatus.REJECTED,
+        'Limite excedido',
+      );
+    });
+
+    it('CA-4 — redelivery de pedido já finalizado NÃO registra a métrica de negócio', async () => {
+      repository.findOne.mockResolvedValue({
+        orderId: 'order-1',
+        status: PaymentStatus.APPROVED,
+      } as Payment);
+
+      await service.processPayment(buildMessage());
+
+      expect(metrics.recordPaymentProcessed).not.toHaveBeenCalled();
     });
   });
 

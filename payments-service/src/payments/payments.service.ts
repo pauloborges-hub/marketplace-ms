@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { PaymentOrderMessage } from '../events/payment-queue.interface';
+import { MetricsService } from '../metrics/metrics.service';
 import {
   FakePaymentGatewayService,
   GatewayResult,
@@ -17,6 +18,7 @@ export class PaymentsService {
     @InjectRepository(Payment)
     private readonly paymentRepository: Repository<Payment>,
     private readonly gateway: FakePaymentGatewayService,
+    private readonly metrics: MetricsService,
   ) {}
 
   /**
@@ -70,6 +72,11 @@ export class PaymentsService {
     payment.processedAt = new Date();
 
     await this.paymentRepository.save(payment);
+
+    // Métrica de negócio: contabiliza apenas o processamento que decidiu o
+    // status agora — o early-return de idempotência (RN5) acima não passa por
+    // aqui, então redeliveries não inflam os counters.
+    this.metrics.recordPaymentProcessed(payment.status, payment.rejectionReason);
 
     this.logger.log(
       `💳 Payment for order ${message.orderId} processed: ` +
