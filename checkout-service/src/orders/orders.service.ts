@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CartService } from '../cart/cart.service';
 import { PaymentQueueService } from '../events/payment-queue/payment-queue.service';
+import { MetricsService } from '../metrics/metrics.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { Order, OrderStatus } from './entities/order.entity';
 import { Logger } from '@nestjs/common';
@@ -29,6 +30,7 @@ export class OrdersService {
     private readonly orderRepository: Repository<Order>,
     private readonly cartService: CartService,
     private readonly paymentQueue: PaymentQueueService,
+    private readonly metrics: MetricsService,
   ) {}
 
   async checkout(userId: string, dto: CheckoutDto): Promise<Order> {
@@ -46,6 +48,9 @@ export class OrdersService {
         status: OrderStatus.PENDING,
       }),
     );
+
+    // Métrica de negócio: pedido persistido com sucesso no checkout.
+    this.metrics.recordOrderCreated();
 
     await this.cartService.markAsCompleted(cart);
 

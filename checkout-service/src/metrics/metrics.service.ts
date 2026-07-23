@@ -16,6 +16,8 @@ export class MetricsService implements OnModuleDestroy {
   private readonly registry = new Registry();
   private readonly requestsTotal: Counter<HttpLabels>;
   private readonly requestDuration: Histogram<HttpLabels>;
+  private readonly ordersCreatedTotal: Counter<string>;
+  private readonly rabbitmqMessagesPublishedTotal: Counter<'queue'>;
 
   constructor() {
     collectDefaultMetrics({ register: this.registry });
@@ -35,6 +37,19 @@ export class MetricsService implements OnModuleDestroy {
       // serviço com acesso direto ao Postgres (sem cauda de proxy/timeout).
       registers: [this.registry],
     });
+
+    this.ordersCreatedTotal = new Counter({
+      name: 'orders_created_total',
+      help: 'Total de pedidos criados com sucesso no checkout',
+      registers: [this.registry],
+    });
+
+    this.rabbitmqMessagesPublishedTotal = new Counter({
+      name: 'rabbitmq_messages_published_total',
+      help: 'Total de mensagens publicadas com sucesso no broker, por destino lógico',
+      labelNames: ['queue'],
+      registers: [this.registry],
+    });
   }
 
   recordHttpRequest(
@@ -47,6 +62,14 @@ export class MetricsService implements OnModuleDestroy {
 
     this.requestsTotal.inc(labels);
     this.requestDuration.observe(labels, durationSeconds);
+  }
+
+  recordOrderCreated() {
+    this.ordersCreatedTotal.inc();
+  }
+
+  recordMessagePublished(queue: string) {
+    this.rabbitmqMessagesPublishedTotal.inc({ queue });
   }
 
   getMetrics(): Promise<string> {

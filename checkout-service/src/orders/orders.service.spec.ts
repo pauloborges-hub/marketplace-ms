@@ -8,6 +8,7 @@ import { CartService } from '../cart/cart.service';
 import { CartItem } from '../cart/entities/cart-item.entity';
 import { Cart, CartStatus } from '../cart/entities/cart.entity';
 import { PaymentQueueService } from '../events/payment-queue/payment-queue.service';
+import { MetricsService } from '../metrics/metrics.service';
 import { PaymentMethod } from './dto/checkout.dto';
 import { Order, OrderStatus } from './entities/order.entity';
 import { OrdersService } from './orders.service';
@@ -22,6 +23,7 @@ describe('OrdersService', () => {
   };
   let cartService: { getActiveCart: jest.Mock; markAsCompleted: jest.Mock };
   let paymentQueue: { publishPaymentOrder: jest.Mock };
+  let metrics: { recordOrderCreated: jest.Mock };
 
   const userId = 'user-uuid';
 
@@ -48,6 +50,7 @@ describe('OrdersService', () => {
       markAsCompleted: jest.fn(() => Promise.resolve()),
     };
     paymentQueue = { publishPaymentOrder: jest.fn(() => Promise.resolve()) };
+    metrics = { recordOrderCreated: jest.fn() };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -55,6 +58,7 @@ describe('OrdersService', () => {
         { provide: getRepositoryToken(Order), useValue: orderRepository },
         { provide: CartService, useValue: cartService },
         { provide: PaymentQueueService, useValue: paymentQueue },
+        { provide: MetricsService, useValue: metrics },
       ],
     }).compile();
 
@@ -99,6 +103,9 @@ describe('OrdersService', () => {
 
       expect(cartService.markAsCompleted).toHaveBeenCalledWith(cart);
 
+      // CA-6: um checkout bem-sucedido registra a métrica de negócio uma vez.
+      expect(metrics.recordOrderCreated).toHaveBeenCalledTimes(1);
+
       expect(paymentQueue.publishPaymentOrder).toHaveBeenCalledTimes(1);
       expect(paymentQueue.publishPaymentOrder).toHaveBeenCalledWith({
         orderId: 'order-uuid',
@@ -122,6 +129,7 @@ describe('OrdersService', () => {
       expect(orderRepository.save).not.toHaveBeenCalled();
       expect(cartService.markAsCompleted).not.toHaveBeenCalled();
       expect(paymentQueue.publishPaymentOrder).not.toHaveBeenCalled();
+      expect(metrics.recordOrderCreated).not.toHaveBeenCalled();
     });
 
     it('rejects with 422 and creates nothing when the active cart has no items (CA7)', async () => {
@@ -134,6 +142,7 @@ describe('OrdersService', () => {
       expect(orderRepository.save).not.toHaveBeenCalled();
       expect(cartService.markAsCompleted).not.toHaveBeenCalled();
       expect(paymentQueue.publishPaymentOrder).not.toHaveBeenCalled();
+      expect(metrics.recordOrderCreated).not.toHaveBeenCalled();
     });
   });
 
