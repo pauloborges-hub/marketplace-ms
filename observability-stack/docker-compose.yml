@@ -9,6 +9,8 @@ services:
     volumes:
       # Configuração de scrape (somente leitura)
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      # Regras de alerta (somente leitura)
+      - ./prometheus/alert.rules.yml:/etc/prometheus/alert.rules.yml:ro
       # Persistir a TSDB do Prometheus
       - prometheus_data:/prometheus
     extra_hosts:
