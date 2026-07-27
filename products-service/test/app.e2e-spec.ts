@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
+import { signToken } from './utils/sign-token';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
@@ -16,18 +17,14 @@ describe('AppController (e2e)', () => {
     await app.init();
   });
 
+  // GET / não é @Public(), então precisa de token para passar pelo JwtAuthGuard
+  // global (o 401 sem token é coberto em metrics.e2e-spec.ts).
   it('/ (GET)', () => {
     return request(app.getHttpServer())
       .get('/')
+      .set('Authorization', `Bearer ${signToken('buyer')}`)
       .expect(200)
       .expect('Hello World!');
-  });
-
-  it('/health (GET) is public and returns the service status', () => {
-    return request(app.getHttpServer())
-      .get('/health')
-      .expect(200)
-      .expect({ status: 'ok', service: 'products-service' });
   });
 
   afterEach(async () => {

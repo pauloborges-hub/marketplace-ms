@@ -7,6 +7,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { databaseConfig } from './config/database.config';
+import { HealthModule } from './health/health.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { ProductsModule } from './products/products.module';
 
@@ -17,6 +18,7 @@ import { ProductsModule } from './products/products.module';
     AuthModule,
     ProductsModule,
     MetricsModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],
