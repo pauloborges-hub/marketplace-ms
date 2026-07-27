@@ -60,11 +60,13 @@ As regras vivem no **Prometheus**, em [`prometheus/alert.rules.yml`](prometheus/
 O `--web.enable-lifecycle` não está habilitado, então não há reload via HTTP:
 
 ```bash
-# validar a sintaxe ANTES de reiniciar (config inválida derruba o Prometheus no boot)
-docker run --rm -v "$PWD/prometheus:/p" prom/prometheus:v2.53.0 \
-  promtool check rules /p/alert.rules.yml
+# Validar a sintaxe ANTES de reiniciar — config inválida derruba o Prometheus no boot.
+# O entrypoint da imagem é o próprio `prometheus`, daí o --entrypoint promtool.
+docker run --rm --entrypoint promtool -v "$PWD/prometheus:/etc/prometheus" \
+  prom/prometheus:v2.53.0 check config /etc/prometheus/prometheus.yml
 
-docker compose restart prometheus
+# Mount novo exige recriar o container; `restart` sozinho não basta na primeira vez.
+docker compose up -d prometheus
 ```
 
 ## 🗺️ Mapa de portas do projeto
