@@ -1,0 +1,135 @@
+# Regras de alerta do marketplace.
+#
+# As regras vivem AQUI, no Prometheus, e não no Grafana Unified Alerting — este
+# arquivo versionado é a fonte de verdade; o Grafana apenas exibe o estado.
+#
+# Não há Alertmanager nesta entrega: os alertas NÃO notificam ninguém. Ficam
+# visíveis em http://localhost:9090/alerts e no dashboard Marketplace Overview.
+#
+# Convenção obrigatória em todas as regras:
+#   - labels.severity: exatamente `critical`, `warning` ou `info`
+#   - annotations.summary: uma linha, com o serviço afetado
+#   - annotations.description: o que foi medido, o valor atual, o limiar e por quanto tempo
+# Sem labels extras (`team`, `runbook`, ...): sem Alertmanager, ninguém as consome.
+
+groups:
+  # ---------------------------------------------------------------------------
+  # Plataforma: saúde técnica dos serviços (disponibilidade, erros, latência, memória)
+  # ---------------------------------------------------------------------------
+  - name: marketplace-platform
+    # Alinhado ao `scrape_interval`; avaliar mais rápido que o scrape só gasta
+    # CPU repetindo o mesmo resultado.
+    interval: 15s
+    rules:
+      # R1 — Serviço fora do ar. Único `critical`: significa requisições falhando AGORA.
+      # O regex exclui de propósito o job `prometheus`: se ele cair, não avalia regra alguma.
+      - alert: ServiceDown
+        expr: up{job=~"api-gateway|users-service|products-service|checkout-service|payments-service"} == 0
+        # 2 ciclos de scrape — menos que isso vira alerta a cada restart do `npm run start:dev`.
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Serviço {{ $labels.job }} está fora do ar"
+          description: "O target {{ $labels.instance }} (job {{ $labels.job }}) não responde ao scrape há mais de 30s."
+
+      # R2 — Taxa de erro 5xx acima de 10%.
+      # Só 5xx, nunca 4xx: 401/404/422 é o cliente errando, não o serviço quebrando.
+      # Sem tráfego não dispara: 0/0 produz NaN, que falha a comparação `> 0.1`.
+      # Atenção: `/health` respondendo 503 é contabilizado aqui — e isso é desejado,
+      # significa que o serviço está de fato degradado.
+      - alert: HighErrorRate
+        expr: |
+          sum by (job) (rate(http_requests_total{status_code=~"5.."}[5m]))
+            /
+          sum by (job) (rate(http_requests_total[5m]))
+            > 0.1
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Taxa de erro 5xx alta em {{ $labels.job }}"
+          description: "{{ $labels.job }} está com {{ $value | humanizePercentage }} de respostas 5xx (limiar: 10%) na janela de 5 minutos."
+
+      # R3 — Latência P95 acima de 2s.
+      # Agrega por `job`, não por `route`: o alerta é sobre o serviço; o detalhe por
+      # rota está no dashboard Service Details.
+      # O `sum by (job, le)` antes do histogram_quantile é obrigatório — quantil sobre
+      # buckets não agregados dá resultado errado.
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (job, le) (rate(http_request_duration_seconds_bucket[5m]))
+          ) > 2
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Latência P95 alta em {{ $labels.job }}"
+          description: "P95 de {{ $labels.job }} em {{ $value | humanizeDuration }} (limiar: 2s) na janela de 5 minutos."
+
+      # R4 — RSS acima de 512MB.
+      # 536870912 = 512 * 1024 * 1024 — o Prometheus não aceita `512Mi` em expressão.
+      # `for: 2m` filtra picos de GC: um Node.js pode encostar no limiar por segundos
+      # antes de coletar.
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes{job=~"api-gateway|users-service|products-service|checkout-service|payments-service"} > 536870912
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Uso de memória alto em {{ $labels.job }}"
+          description: "{{ $labels.job }} usando {{ $value | humanize1024 }}B de RSS (limiar: 512MB) há mais de 2 minutos."
+
+  # ---------------------------------------------------------------------------
+  # Negócio: o fluxo de pagamentos está acontecendo e está saudável?
+  # ---------------------------------------------------------------------------
+  - name: marketplace-business
+    interval: 15s
+    rules:
+      # R5 — Nenhum pagamento processado em 5 minutos.
+      #
+      # `or vector(0)` é obrigatório: se a série `payments_processed_total` ainda não
+      # existe (processo recém-subido), `sum(increase(...))` retorna vetor vazio e a
+      # comparação `== 0` não produz resultado — o alerta nunca dispararia justamente
+      # no cenário que ele deveria pegar.
+      #
+      # A guarda `sum(up{job="payments-service"}) > 0` evita alerta duplicado: com o
+      # serviço fora, quem deve disparar é o ServiceDown (critical), não este.
+      #
+      # Tempo total até disparar ≈ 10 minutos (janela de 5m + `for: 5m`). Intencional:
+      # sem o `for`, dispararia a cada boot do ambiente.
+      #
+      # Este alerta VAI disparar em ambiente de desenvolvimento ocioso — por isso a
+      # severidade é `info`: é um indicador de fluxo, não um defeito.
+      - alert: NoPaymentsProcessed
+        expr: |
+          (sum(increase(payments_processed_total[5m])) or vector(0)) == 0
+            and
+          (sum(up{job="payments-service"}) > 0)
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: "Nenhum pagamento processado nos últimos 5 minutos"
+          description: "payments_processed_total não incrementou na janela de 5 minutos, com o payments-service no ar. Pode indicar fila parada, consumidor sem canal AMQP ou simplesmente ausência de tráfego."
+
+      # R6 — Mais de 50% dos pagamentos rejeitados.
+      # `sum(...)` sem `by` descarta o label `reason` do numerador — sem isso a divisão
+      # não casaria com o denominador, que não tem `reason`.
+      # Sem pagamentos, 0/0 => NaN => não dispara.
+      # Sensível a volume baixo (1 processado + 1 rejeitado = 100%). Aceito nesta entrega;
+      # se virar ruído, acrescentar um piso: `and (sum(increase(payments_processed_total[5m])) >= 5)`.
+      - alert: HighPaymentRejectionRate
+        expr: |
+          sum(rate(payments_rejected_total[5m]))
+            /
+          sum(rate(payments_processed_total[5m]))
+            > 0.5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Taxa de rejeição de pagamentos acima de 50%"
+          description: "{{ $value | humanizePercentage }} dos pagamentos foram rejeitados na janela de 5 minutos (limiar: 50%). Verificar o gateway de pagamento e os motivos em payments_rejected_total{reason}."
