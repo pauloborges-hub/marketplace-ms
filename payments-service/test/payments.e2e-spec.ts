@@ -8,6 +8,7 @@ import { App } from 'supertest/types';
 import { Repository } from 'typeorm';
 
 import { databaseConfig } from '../src/config/database.config';
+import { MetricsModule } from '../src/metrics/metrics.module';
 import {
   Payment,
   PaymentStatus,
@@ -20,7 +21,11 @@ describe('Payments (e2e)', () => {
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [TypeOrmModule.forRoot(databaseConfig), PaymentsModule],
+      imports: [
+        TypeOrmModule.forRoot(databaseConfig),
+        MetricsModule,
+        PaymentsModule,
+      ],
     }).compile();
 
     app = moduleFixture.createNestApplication();
