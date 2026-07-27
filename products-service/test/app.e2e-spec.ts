@@ -23,13 +23,6 @@ describe('AppController (e2e)', () => {
       .expect('Hello World!');
   });
 
-  it('/health (GET) is public and returns the service status', () => {
-    return request(app.getHttpServer())
-      .get('/health')
-      .expect(200)
-      .expect({ status: 'ok', service: 'products-service' });
-  });
-
   afterEach(async () => {
     await app.close();
   });

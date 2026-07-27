@@ -37,7 +37,7 @@ describe('Metrics (e2e)', () => {
 
   it('CA3 — expõe o counter http_requests_total com labels method, route e status_code', async () => {
     // O /metrics se exclui das próprias métricas, então geramos tráfego em
-    // outra rota pública (sem DB) antes de haver alguma série com labels.
+    // outra rota pública antes de haver alguma série com labels.
     await request(app.getHttpServer()).get('/health').expect(200);
 
     const res = await getMetrics().expect(200);
