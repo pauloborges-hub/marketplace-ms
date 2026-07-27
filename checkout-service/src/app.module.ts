@@ -11,6 +11,7 @@ import { CartModule } from './cart/cart.module';
 import { OrdersModule } from './orders/orders.module';
 import { databaseConfig } from './config/database.config';
 import { EventsModule } from './events/events.module';
+import { HealthModule } from './health/health.module';
 import { MetricsModule } from './metrics/metrics.module';
 
 @Module({
@@ -22,6 +23,7 @@ import { MetricsModule } from './metrics/metrics.module';
     CartModule,
     OrdersModule,
     EventsModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],
