@@ -1,4 +1,7 @@
-import { HealthIndicatorResult, HealthIndicatorService } from '@nestjs/terminus';
+import {
+  HealthIndicatorResult,
+  HealthIndicatorService,
+} from '@nestjs/terminus';
 import { Injectable } from '@nestjs/common';
 
 import { RabbitmqService } from '../../events/rabbitmq/rabbitmq.service';
