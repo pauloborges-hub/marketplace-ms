@@ -3,6 +3,11 @@ global:
   scrape_interval: 15s # Frequência padrão de coleta de métricas
   evaluation_interval: 15s # Frequência de avaliação de regras
 
+# Regras de alerta avaliadas a cada `evaluation_interval` (15s).
+# O caminho é o de dentro do container, montado pelo docker-compose.yml.
+rule_files:
+  - /etc/prometheus/alert.rules.yml
+
 # Os 5 serviços NestJS rodam no HOST (fora de container), então o Prometheus
 # os alcança via host.docker.internal. O endpoint padrão é /metrics.
 # Enquanto os serviços não expõem /metrics (próxima spec), os targets ficam DOWN.
