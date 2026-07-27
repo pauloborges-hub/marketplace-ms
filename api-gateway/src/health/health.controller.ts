@@ -26,9 +26,13 @@ export class HealthController {
    * timeout de 3s (menor que os 10s de serviceConfig usados no proxy) com os 4
    * indicadores em paralelo mantém o pior caso em ~3s. @SkipThrottle porque um 429
    * do CustomThrottlerGuard seria lido por um monitor como gateway doente.
+   *
+   * Os três throttlers precisam ser nomeados: o ThrottlerGuard resolve o metadata
+   * por nome de throttler, e o @SkipThrottle() sem argumento só marca o nome
+   * 'default' — que não existe na config do AppModule.
    */
   @Get()
-  @SkipThrottle()
+  @SkipThrottle({ short: true, medium: true, long: true })
   @HealthCheck()
   @ApiOperation({
     summary: 'Health check do gateway e dos 4 serviços downstream',
