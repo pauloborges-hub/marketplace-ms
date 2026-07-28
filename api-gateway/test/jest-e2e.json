@@ -8,5 +8,7 @@
   },
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
-  }
+  },
+  "setupFiles": ["<rootDir>/utils/setup-e2e-env.ts"],
+  "testPathIgnorePatterns": ["marketplace-flow\\.e2e-spec\\.ts$"]
 }

@@ -5,5 +5,9 @@
   "testRegex": ".e2e-spec.ts$",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "setupFiles": ["<rootDir>/utils/setup-e2e-env.ts"],
+  "moduleNameMapper": {
+    "config/database\\.config$": "<rootDir>/utils/test-database.config.ts"
   }
 }
