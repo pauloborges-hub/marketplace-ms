@@ -57,7 +57,9 @@ describe('Metrics endpoint (e2e)', () => {
     const res = await fetchMetrics();
 
     expect(res.text).toContain('# TYPE http_requests_total counter');
-    expect(res.text).toContain('# TYPE http_request_duration_seconds histogram');
+    expect(res.text).toContain(
+      '# TYPE http_request_duration_seconds histogram',
+    );
     expect(res.text).toMatch(/http_request_duration_seconds_bucket\{/);
     expect(res.text).toMatch(/http_request_duration_seconds_sum\{/);
     expect(res.text).toMatch(/http_request_duration_seconds_count\{/);
@@ -106,26 +108,34 @@ describe('Metrics endpoint (e2e)', () => {
   // CA9 — LIMITAÇÃO CONHECIDA: 404 de rota inexistente é servido por
   // setNotFoundHandler (layer use() do Express), fora da cadeia de
   // interceptors, então não é contabilizado. Ver nota na seção 6 da spec 04.
+  // A asserção precisa casar a série *daquela rota*: um `status_code="404"`
+  // solto já existe neste ponto, gerado pelos GET /orders/:id inexistentes do
+  // CA7 — que passam pelo interceptor e são contabilizados normalmente. Sem o
+  // label `route`, o `.failing` casava com aquela série e o teste passava,
+  // deixando de documentar a limitação.
   it.failing('accounts 404 for unknown routes (CA9)', async () => {
     await request(app.getHttpServer()).get('/rota-que-nao-existe').expect(404);
 
     const res = await fetchMetrics();
 
     expect(res.text).toMatch(
-      /http_requests_total\{[^}]*status_code="404"[^}]*\}/,
+      /http_requests_total\{[^}]*route="\/rota-que-nao-existe"[^}]*status_code="404"[^}]*\}/,
     );
   });
 
   // CA10 — LIMITAÇÃO CONHECIDA: o JwtAuthGuard global (APP_GUARD) roda antes
   // dos interceptors, então um 401 curto-circuita antes do interceptor. Ver
   // nota na seção 6 da spec 04.
-  it.failing('accounts 401 for protected routes without token (CA10)', async () => {
-    await request(app.getHttpServer()).get('/cart').expect(401);
+  it.failing(
+    'accounts 401 for protected routes without token (CA10)',
+    async () => {
+      await request(app.getHttpServer()).get('/cart').expect(401);
 
-    const res = await fetchMetrics();
+      const res = await fetchMetrics();
 
-    expect(res.text).toMatch(
-      /http_requests_total\{[^}]*status_code="401"[^}]*\}/,
-    );
-  });
+      expect(res.text).toMatch(
+        /http_requests_total\{[^}]*status_code="401"[^}]*\}/,
+      );
+    },
+  );
 });

@@ -193,6 +193,17 @@ describe('Order checkout (e2e)', () => {
       const userId = randomUUID();
       const auth = bearer('buyer', userId);
       const first = await createOrder(auth);
+
+      // O SQLite da suíte e2e grava `datetime` com precisão de segundos (o
+      // Postgres usa microssegundos), então dois pedidos criados no mesmo
+      // segundo empatam em createdAt e o ORDER BY fica indefinido. Envelhecer o
+      // primeiro pedido torna a ordenação determinística sem esperar 1s — e a
+      // asserção continua exercitando o `order: { createdAt: 'DESC' }` real.
+      await orderRepository.update(
+        { id: (first.body as { id: string }).id },
+        { createdAt: new Date(Date.now() - 60_000) },
+      );
+
       const second = await createOrder(auth);
 
       const res = await request(app.getHttpServer())
